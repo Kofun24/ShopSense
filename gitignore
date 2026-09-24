@@ -47,3 +47,9 @@ logs/
 
 # --- MLflow / experiment tracking (if used) ---
 mlruns/
+
+# --- Project specific ---
+models/final_model_trainonly.joblib
+notebooks/scratch_*.ipynb
+data/processed/*
+!data/processed/.gitkeep
