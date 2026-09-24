@@ -1,0 +1,55 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+*.egg
+.Python
+build/
+dist/
+
+# --- Virtual environments ---
+venv/
+.venv/
+env/
+ENV/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Environment / secrets ---
+.env
+.env.*
+*.key
+
+# --- Data (uncomment if your data files get large) ---
+# data/raw/*.csv
+# data/raw/*.xlsx
+
+# --- Models (uncomment if trained models get large, use Git LFS instead) ---
+# models/*.pkl
+# models/*.joblib
+# models/*.h5
+
+# --- OS/editor junk ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Node (if frontend uses npm) ---
+node_modules/
+npm-debug.log*
+
+# --- Logs ---
+*.log
+logs/
+
+# --- MLflow / experiment tracking (if used) ---
+mlruns/
+
+# --- Project specific ---
+models/final_model_trainonly.joblib
+notebooks/scratch_*.ipynb
+data/processed/*
+!data/processed/.gitkeep
