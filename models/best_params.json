@@ -1,0 +1,29 @@
+{
+  "LogisticRegression": {
+    "model__C": 0.03334792728637585
+  },
+  "RandomForest": {
+    "model__class_weight": null,
+    "model__max_depth": 12,
+    "model__max_features": "sqrt",
+    "model__min_samples_leaf": 5,
+    "model__n_estimators": 424
+  },
+  "HistGradientBoosting": {
+    "model__class_weight": null,
+    "model__l2_regularization": 0.014926318309209369,
+    "model__learning_rate": 0.02077730198812756,
+    "model__max_iter": 180,
+    "model__max_leaf_nodes": 15,
+    "model__min_samples_leaf": 44
+  },
+  "XGBoost": {
+    "model__colsample_bytree": 0.847892199672541,
+    "model__learning_rate": 0.03713861285134416,
+    "model__max_depth": 4,
+    "model__min_child_weight": 9,
+    "model__n_estimators": 209,
+    "model__scale_pos_weight": 1,
+    "model__subsample": 0.6967409163601807
+  }
+}
