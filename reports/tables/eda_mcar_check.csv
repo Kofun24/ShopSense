@@ -1,0 +1,9 @@
+column,compared_with,chi2_p_value,evidence_against_MCAR
+Administrative_Duration,Revenue,0.754,False
+Administrative_Duration,Month,0.4755,False
+ProductRelated_Duration,Revenue,0.3133,False
+ProductRelated_Duration,Month,0.5782,False
+BounceRates,Revenue,0.9965,False
+BounceRates,Month,0.945,False
+VisitorType,Revenue,0.3882,False
+VisitorType,Month,0.866,False

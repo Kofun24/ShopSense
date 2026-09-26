@@ -1,0 +1,11 @@
+column,skew,zero_share_%,IQR_outliers,IQR_outlier_%,p99,max
+Administrative,1.96,46.8,404,3.3,14.0,27.0
+Administrative_Duration,5.61,47.9,1116,9.6,832.4337777580043,3398.75
+Informational,4.04,78.7,2631,21.3,6.0,24.0
+Informational_Duration,7.58,80.5,2405,19.5,716.3899999999921,2549.375
+ProductRelated,4.34,0.3,987,8.0,221.0,705.0
+ProductRelated_Duration,7.4,6.1,926,7.9,8697.53197984001,63973.52223
+BounceRates,2.95,44.8,1439,12.5,0.2,0.2
+ExitRates,2.15,0.6,1099,8.9,0.2,0.2
+PageValues,6.38,77.9,2730,22.1,85.49849043159924,361.7637419
+SpecialDay,3.3,89.9,1251,10.1,1.0,1.0

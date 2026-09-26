@@ -1,0 +1,11 @@
+experiment,HistGradientBoosting,LogisticRegression,RandomForest
+baseline (BEST_PREP),0.7329,0.6638,0.7394
+drop PageValues,0.3445,0.328,0.3675
+drop PageValues+ExitRates+BounceRates,0.3348,0.3109,0.3453
+no feature engineering,0.7389,0.662,0.7291
+outlier: log1p,0.7329,0.6638,0.7394
+outlier: none,0.7329,0.6663,0.7388
+outlier: quantile cap,0.7343,0.6702,0.7408
+selector: RF importance,0.7348,0.6628,0.7337
+selector: mutual-info top30,0.7346,0.6648,0.7282
+with feature engineering,0.7329,0.6638,0.7394
