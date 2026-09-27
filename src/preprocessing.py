@@ -1,11 +1,7 @@
 """src/preprocessing.py
-Everything about the DATA in one place:
-  1. configuration (paths, column lists, BEST_PREP decisions)
-  2. loading / cleaning / duplicate removal / stratified split
-  3. scikit-learn transformers + pipeline stages (imputation, feature engineering, outliers, encoding, selection)
 
-All fitted steps live inside scikit-learn Pipelines, so they are fitted on training folds only (no leakage)
-and are re-used unchanged by the backend.
+
+
 """
 import os
 from functools import partial
