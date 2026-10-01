@@ -9,6 +9,16 @@ st.set_page_config(page_title="Shopper Intent Predictor", page_icon="🛒", layo
 st.title("🛒 Online Shopper Purchase-Intent Predictor")
 st.caption("Enter what you know about a browsing session. Unknown fields are estimated automatically.")
 
+FRIENDLY = {
+    "Administrative": "Account/admin pages viewed", "Administrative_Duration": "Time on admin pages (s)",
+    "Informational": "Info pages viewed", "Informational_Duration": "Time on info pages (s)",
+    "ProductRelated": "Product pages viewed", "ProductRelated_Duration": "Time on product pages (s)",
+    "BounceRates": "Bounce rate", "ExitRates": "Exit rate", "PageValues": "Page value",
+    "SpecialDay": "Closeness to special day", "Month": "Month", "VisitorType": "Visitor type",
+    "Weekend": "Weekend", "OperatingSystems": "Operating system", "Browser": "Browser",
+    "Region": "Region", "TrafficType": "Traffic type",
+}
+
 PRESETS = {
     "Custom": {},
     "Casual browser": dict(Administrative=0, Informational=0, ProductRelated=4, ProductRelated_Duration=120.0,
@@ -33,6 +43,23 @@ def num(label, key, default, mn, mx, step, help_=None, is_int=False):
     val = c1.number_input(label, min_value=mn, max_value=mx, value=type(mn)(P.get(key, default)), step=step,
                           key=f"{key}_{k}", help=help_, disabled=unknown)
     return None if unknown else (int(val) if is_int else float(val))
+
+
+def render_gauge(p: float):
+    """Dependency-free colour gauge: a horizontal bar with the probability as a %, no plotly needed."""
+    pct = max(0, min(100, round(p * 100)))
+    color = "#2ecc71" if p >= 0.6 else ("#f1c40f" if p >= 0.35 else "#e74c3c")
+    st.markdown(
+        f"""
+        <div style="background:#30363d;border-radius:8px;height:30px;width:100%;
+                    position:relative;overflow:hidden;margin:4px 0 12px 0;">
+          <div style="background:{color};width:{pct}%;height:100%;transition:width .4s ease;"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                      color:white;font-weight:700;font-size:0.95rem;">{pct}% purchase probability</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 left, right = st.columns(2)
@@ -71,15 +98,35 @@ if st.button("Predict purchase intent", type="primary", use_container_width=True
     if r.status_code != 200:
         st.error(f"Request rejected: {r.json().get('detail', r.text)}")
         st.stop()
+
     res = r.json()
     p = res["purchase_probability"]
     st.divider()
+
+    render_gauge(p)
+
     a, b, c = st.columns(3)
-    a.metric("Purchase probability", f"{p:.0%}")
-    b.metric("Prediction", "Will buy ✅" if res["will_purchase"] else "Will not buy ❌")
-    c.metric("Intent level", res["intent_level"])
-    st.progress(min(max(p, 0.0), 1.0))
+    a.metric("Prediction", "Will buy ✅" if res["will_purchase"] else "Will not buy ❌")
+    b.metric("Intent level", res["intent_level"])
+    c.metric("Decision threshold", f"{res['decision_threshold']:.0%}")
+
     (st.success if res["will_purchase"] else st.warning)(f"**Recommended action:** {res['recommended_action']}")
-    if res["fields_imputed"]:
-        st.info("Estimated automatically (not provided): " + ", ".join(res["fields_imputed"]))
-    st.caption(f"Model: {res['model']} | decision threshold: {res['decision_threshold']}")
+
+    if res.get("key_factors"):
+        st.markdown("**Key factors behind this prediction:**")
+        st.caption("Based on the model's overall feature importance — which of the fields you gave it matter most in general.")
+        for f in res["key_factors"]:
+            label = FRIENDLY.get(f["field"], f["field"])
+            tag = "" if f["provided"] else " _(estimated)_"
+            st.write(f"- **{label}:** {f['value']}{tag}")
+
+    if res.get("low_confidence"):
+        st.warning(
+            f"⚠️ {len(res['fields_imputed'])} of 17 fields were estimated automatically — "
+            "treat this prediction as a rough estimate, not a confident result."
+        )
+    elif res["fields_imputed"]:
+        friendly_imputed = ", ".join(FRIENDLY.get(c, c) for c in res["fields_imputed"])
+        st.info(f"Estimated automatically (not provided): {friendly_imputed}")
+
+    st.caption(f"Model: {res['model']}")
