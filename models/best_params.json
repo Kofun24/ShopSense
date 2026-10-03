@@ -1,13 +1,20 @@
 {
-  "LogisticRegression": {
-    "model__C": 0.03334792728637585
-  },
   "RandomForest": {
     "model__class_weight": null,
     "model__max_depth": 12,
     "model__max_features": "sqrt",
     "model__min_samples_leaf": 5,
     "model__n_estimators": 424
+  },
+  "LogisticRegression": {
+    "model__C": 0.03334792728637585
+  },
+  "DecisionTree": {
+    "model__class_weight": null,
+    "model__criterion": "gini",
+    "model__max_depth": 6,
+    "model__min_samples_leaf": 19,
+    "model__min_samples_split": 18
   },
   "HistGradientBoosting": {
     "model__class_weight": null,
@@ -25,5 +32,15 @@
     "model__n_estimators": 209,
     "model__scale_pos_weight": 1,
     "model__subsample": 0.6967409163601807
+  },
+  "SVM_RBF": {
+    "model__C": 28.34090429514775,
+    "model__class_weight": null,
+    "model__gamma": 0.00627773091695805
+  },
+  "KNN": {
+    "model__n_neighbors": 48,
+    "model__p": 1,
+    "model__weights": "distance"
   }
 }
