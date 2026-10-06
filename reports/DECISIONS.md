@@ -1,0 +1,25 @@
+# Decision log
+
+| Decision | Choice | Why (evidence) |
+|---|---|---|
+| Task / metric | Binary classification; F1, recall, precision, PR-AUC, ROC-AUC | 15.5% positive class (1,908 of 12,330) — accuracy is misleading since predicting "no" alone gives 84.5%. |
+| Missingness type | MCAR | Chi-square p-values for missingness flag vs Revenue/Month all well above 0.05 (e.g. Administrative_Duration: p=0.754 vs Revenue, p=0.476 vs Month). Confirms no hidden pattern. |
+| Duplicates | Dropped before split | 92 duplicate rows (0.75% of 12,330) removed. Prevents the same session appearing in both train and test. |
+| Imputers compared | mean, median, KNN, iterative (numeric); mode vs "Unknown" (categorical) | Iterative/KNN had the lowest imputation error (e.g. BounceRates: KNN NRMSE 0.276 vs median's 1.111 — a 4x improvement). Downstream model performance was nearly identical across all strategies (within CV std), so we kept median+mode for simplicity, speed, and because it's what our validated final model uses. |
+| Row deletion | Rejected | Only 7,805 of 9,790 training rows are fully observed — deletion would discard ~20% of data for no measurable downstream gain (HistGB f1: 0.6610 deletion vs 0.6691 median imputation). |
+| Scaling of imputation | Standardise before KNN/iterative | Prevents duration columns (thousands of seconds) dominating distance calculations over 0-1 rate columns. |
+| Outliers | log1p (tested, kept as justified default) | Administrative_Duration skew=5.61, 9.6% IQR "outliers" — mostly real long sessions, not errors. Ablation showed outlier treatment makes ~0 measurable difference (PR-AUC 0.7379 none vs log vs cap), so we kept log1p based on the EDA skew/outlier argument rather than a performance difference. |
+| Encoding | One-hot, rare levels grouped (<1%) | OS/Browser/Region/TrafficType are nominal IDs, not ordered. |
+| Scaling | StandardScaler | Needed for LR/SVM/KNN; harmless for tree models. |
+| Feature engineering | TotalPages, TotalDuration, AvgTimePerPage, ProductRelatedShare, IsHolidaySeason, HasPageValue | Ablation showed no measurable harm (baseline PR-AUC 0.7379 vs no-FE 0.7375); kept for interpretability value. |
+| Feature selection | None | Both mutual-info top-30 and RF-importance selectors slightly underperformed no-selection (0.7362/0.7358 vs 0.7379 baseline). |
+| Imbalance | Compared none / class_weight / SMOTE | RandomForest (none) had the best PR-AUC (0.7458); HistGB with class_weight had the best recall (0.780) at some precision cost. Final model used "none" since PR-AUC was the primary ranking metric. |
+| Validation | 20% stratified hold-out + stratified 5-fold CV on the 80% | Train: 9,790 rows (15.6% buyers), test: 2,448 rows (15.6% buyers) — confirms stratification worked correctly. |
+| Leakage | PageValues tested explicitly | Dropping PageValues collapsed PR-AUC from 0.7379 to 0.3490 (HistGB), 0.7422 to 0.3681 (RF) — roughly halving performance. Decision: KEEP it, since our system is designed to score completed sessions, not real-time mid-session predictions. |
+| Tuning | RandomizedSearchCV, 40 candidates, 5-fold CV, refit on PR-AUC | Applied to LogisticRegression, RandomForest, HistGradientBoosting, XGBoost (200 fits each). |
+| Tuning results | RF: 0.7526, HistGB: 0.7514, XGBoost: 0.7512, LR: 0.6668 (all CV PR-AUC) | Top 3 tree-based models are statistically indistinguishable (within ~0.002 of each other). XGBoost gained the most from tuning (+0.0366 PR-AUC); Logistic Regression's tuned result was worse than baseline (-0.0274), suggesting its default regularization was already near-optimal. |
+| Final model | RandomForest | Best CV PR-AUC (0.7526) among tuned models; simpler to interpret than boosting; params: max_depth=12, max_features='sqrt', min_samples_leaf=5, n_estimators=424. |
+| Threshold | 0.381 (vs default 0.5) | Chosen by maximizing F1 on out-of-fold training predictions (OOF F1=0.687). Trades 10 points of precision (0.762→0.656) for 10 points of recall (0.620→0.720) — reasonable if a missed buyer costs more than a wasted marketing touch. |
+| Final test performance | Accuracy 0.898, ROC-AUC 0.938, PR-AUC 0.772, F1 0.687 | Test PR-AUC (0.772) is actually higher than CV estimate (0.753) — no overfitting concern. |
+| Why trees win | RandomForest/HistGB/XGBoost all scored 0.71-0.75 PR-AUC vs SVM 0.72, LogisticRegression 0.69, KNN 0.69, DecisionTree 0.54 (baseline, best imbalance strategy each) | Tree ensembles capture non-linear interactions (especially around PageValues thresholds) that linear/distance-based models miss; a single Decision Tree overfits without ensembling. |
+| Deployment model | Refit on all data (train+test) with tuned RandomForest params | Standard practice; saved as models/final_model.joblib. Evaluation metrics above come from the train-only version (final_model_trainonly.joblib). |

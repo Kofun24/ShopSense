@@ -1,11 +1,7 @@
 """src/preprocessing.py
-Everything about the DATA in one place:
-  1. configuration (paths, column lists, BEST_PREP decisions)
-  2. loading / cleaning / duplicate removal / stratified split
-  3. scikit-learn transformers + pipeline stages (imputation, feature engineering, outliers, encoding, selection)
 
-All fitted steps live inside scikit-learn Pipelines, so they are fitted on training folds only (no leakage)
-and are re-used unchanged by the backend.
+
+
 """
 import os
 from functools import partial
@@ -68,8 +64,9 @@ MISSING_CATEGORICAL = ["VisitorType"]
 LEAKAGE_SUSPECTS = ["PageValues", "ExitRates", "BounceRates"]
 
 # ---- DECISION POINT -----------------------------------------------------
-# Defaults used by notebook 03 (modelling) and the deployed model.
-# Update these once notebook 02 (imputation + feature experiments) tells you what is best.
+# Validated against real experiment results (notebooks 02/03): keep PageValues (dropping it
+# roughly halves PR-AUC), median/mode imputation performs within noise of KNN/iterative
+# downstream, log1p and feature engineering make no measurable difference, no selector needed.
 BEST_PREP = dict(
     imputer="median",        # mean | median | knn | iterative
     cat_imputer="mode",      # mode | unknown

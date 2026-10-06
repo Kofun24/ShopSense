@@ -9,7 +9,7 @@ from backend import service
 
 app = FastAPI(title="Online Shopper Purchase-Intention API", version="1.0")
 
-Month = Literal["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+MonthLiteral = Literal["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
 class Session(BaseModel):
@@ -25,7 +25,7 @@ class Session(BaseModel):
     ExitRates: Optional[float] = Field(None, ge=0, le=1)
     PageValues: Optional[float] = Field(None, ge=0, le=1000)
     SpecialDay: Optional[float] = Field(None, ge=0, le=1, description="closeness to special day (0-1)")
-    Month: Optional[Month] = None
+    Month: Optional[MonthLiteral] = None
     OperatingSystems: Optional[int] = Field(None, ge=1, le=20)
     Browser: Optional[int] = Field(None, ge=1, le=20)
     Region: Optional[int] = Field(None, ge=1, le=20)
