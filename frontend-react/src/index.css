@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Main Canvas & Surface Backgrounds */
+  --color-bg-app: #F8FAFC;
+  --color-bg-sidebar: #FFFFFF;
+  --color-bg-card: #FFFFFF;
+  --color-bg-subtle: #F1F5F9;
+  --color-bg-muted: #F8FAFC;
+
+  /* Borders & Dividers - Crisp neutral light gray */
+  --color-border: #E2E8F0;
+  --color-border-subtle: #F1F5F9;
+
+  /* Typography - Sharp, readable slate */
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748B;
+
+  /* Vibrant ShopSense Brand Blue / Indigo (#2A66F7) */
+  --color-primary: #2A66F7;
+  --color-primary-hover: #1E51D8;
+  --color-primary-accent: #3B82F6;
+  --color-primary-soft: #EEF4FF;
+  --color-primary-selected: #DBEAFE;
+
+  /* Forest / Emerald Status Badge */
+  --color-status-bg: #E6F4EA;
+  --color-status-text: #137333;
+  --color-status-dot: #137333;
+
+  /* Data Visualization energetic tones */
+  --color-chart-navy: #1E3A8A;
+  --color-chart-coral: #FF5A1F;
+
+  /* Semantic Colors - Punchy, lively, and natural */
+  --color-success: #10B981;
+  --color-success-dark: #047857;
+  --color-success-soft: #ECFDF5;
+
+  --color-warning: #F59E0B;
+  --color-warning-dark: #D97706;
+  --color-warning-soft: #FFFBEB;
+
+  --color-danger: #EF4444;
+  --color-danger-dark: #DC2626;
+  --color-danger-soft: #FEF2F2;
+
+  --color-secondary: #0D9488;
+  --color-secondary-soft: #F0FDFA;
+}
+
+.dark {
+  /* Main Canvas & Surface Backgrounds */
+  --color-bg-app: #0B0F19;
+  --color-bg-sidebar: #111827;
+  --color-bg-card: #111827;
+  --color-bg-subtle: #1E293B;
+  --color-bg-muted: #161F30;
+
+  /* Borders & Dividers */
+  --color-border: #1E293B;
+  --color-border-subtle: #243044;
+
+  /* Typography */
+  --color-text-primary: #F8FAFC;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #64748B;
+
+  /* Vibrant Brand Blue adapted for Dark Mode */
+  --color-primary: #3B82F6;
+  --color-primary-hover: #60A5FA;
+  --color-primary-accent: #60A5FA;
+  --color-primary-soft: rgba(59, 130, 246, 0.18);
+  --color-primary-selected: rgba(59, 130, 246, 0.28);
+
+  /* Status Badge Dark */
+  --color-status-bg: rgba(19, 115, 51, 0.22);
+  --color-status-text: #34D399;
+  --color-status-dot: #34D399;
+
+  /* Data Viz energetic tones in dark */
+  --color-chart-navy: #3B82F6;
+  --color-chart-coral: #FF5A1F;
+
+  /* Semantic Colors adapted for Dark Mode */
+  --color-success: #10B981;
+  --color-success-dark: #34D399;
+  --color-success-soft: rgba(16, 185, 129, 0.18);
+
+  --color-warning: #F59E0B;
+  --color-warning-dark: #FBBF24;
+  --color-warning-soft: rgba(245, 158, 11, 0.18);
+
+  --color-danger: #EF4444;
+  --color-danger-dark: #F87171;
+  --color-danger-soft: rgba(239, 68, 68, 0.18);
+
+  --color-secondary: #14B8A6;
+  --color-secondary-soft: rgba(20, 184, 166, 0.18);
+}
+
+body {
+  background-color: var(--color-bg-app);
+  color: var(--color-text-primary);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

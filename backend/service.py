@@ -91,3 +91,48 @@ def predict_one(payload: dict) -> dict:
             "low_confidence": len(fields_imputed) >= LOW_CONFIDENCE_IMPUTED,
             "key_factors": key_factors,
             "model": art["model_name"]}
+
+
+def predict_batch(df: pd.DataFrame) -> dict:
+    if len(df) > 5000:
+        raise ValueError("Please upload 5,000 rows or fewer.")
+    if len(df) == 0:
+        raise ValueError("CSV contains no data rows.")
+
+    missing = [c for c in FEATURE_COLS if c not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required columns in CSV: {', '.join(missing)}")
+
+    art = load_artefact()
+    thr = float(art["threshold"])
+
+    df_features = df[FEATURE_COLS].copy()
+    df_prep = prepare_input(df_features)
+    probas = art["pipeline"].predict_proba(df_prep)[:, 1]
+
+    is_na = df_features.isna()
+    results = []
+    flagged = 0
+
+    for idx, proba in enumerate(probas):
+        p = float(proba)
+        imputed = [c for c in FEATURE_COLS if is_na.iat[idx, df_features.columns.get_loc(c)]]
+        is_low_conf = len(imputed) >= LOW_CONFIDENCE_IMPUTED
+        if is_low_conf:
+            flagged += 1
+
+        band, _ = recommend(p, thr)
+        results.append({
+            "row_index": idx,
+            "purchase_probability": round(p, 4),
+            "will_purchase": bool(p >= thr),
+            "intent_level": band,
+            "low_confidence": is_low_conf,
+            "fields_imputed": imputed,
+        })
+
+    return {
+        "total_records": len(df),
+        "flagged_for_review": flagged,
+        "results": results,
+    }
