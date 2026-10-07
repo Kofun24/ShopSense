@@ -27,7 +27,8 @@ An online retailer wants to know, while a customer is still browsing, whether th
 ├── notebooks/
 │   ├── 01_eda.ipynb
 │   ├── 02_preprocessing.ipynb
-│   └── 03_modelling.ipynb
+│   └── 03_model_development.ipynb
+|   └──04_model_optimization.ipynb
 ├── src/
 │   ├── preprocessing.py    # Reusable cleaning/encoding/scaling functions
 │   ├── train.py            # Model training script
