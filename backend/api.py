@@ -1,13 +1,23 @@
 """FastAPI backend.   Run from the repo root:  uvicorn backend.api:app --reload --port 8000
 Docs (auto-generated, good for the demo):  http://localhost:8000/docs"""
+import io
 from typing import Literal, Optional
 
-from fastapi import FastAPI, HTTPException
+import pandas as pd
+from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from backend import service
 
 app = FastAPI(title="Online Shopper Purchase-Intention API", version="1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # dev only
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 MonthLiteral = Literal["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
@@ -58,3 +68,23 @@ def predict(session: Session):
         raise HTTPException(status_code=422, detail=str(e))
     except FileNotFoundError:
         raise HTTPException(status_code=503, detail="Model file not found. Run notebooks/03_modelling.ipynb")
+
+
+@app.post("/predict/batch")
+async def predict_batch(file: UploadFile = File(...)):
+    if not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=422, detail="Only CSV files are supported.")
+    try:
+        content = await file.read()
+        df = pd.read_csv(io.BytesIO(content))
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Unparseable CSV file: {e}")
+
+    try:
+        return service.predict_batch(df)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail="Model file not found. Run notebooks/03_modelling.ipynb")
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Error processing CSV: {e}")
