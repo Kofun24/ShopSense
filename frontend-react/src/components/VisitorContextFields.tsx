@@ -48,110 +48,90 @@ export const VisitorContextFields: React.FC<VisitorContextFieldsProps> = ({
     <div className="space-y-4">
       {/* Categoricals & Weekend Segmented Control */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* Month */}
+        {/* Month - Required */}
         <div className="p-3 rounded-xl bg-subtle/50 border border-border hover:border-slate-300 dark:hover:border-slate-700 transition-colors flex flex-col justify-between">
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <label
               htmlFor="select-month"
-              className="text-xs sm:text-sm font-medium text-text select-none"
+              className="text-xs sm:text-sm font-medium text-text select-none flex items-center gap-1"
             >
-              Month
+              <span>Month</span>
+              <span className="text-danger font-bold text-sm" title="Required">
+                *
+              </span>
             </label>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <label
-                htmlFor="toggle-month"
-                className="text-xs text-text-muted select-none cursor-pointer hover:text-text transition-colors"
-              >
-                Unknown
-              </label>
-              <input
-                id="toggle-month"
-                type="checkbox"
-                checked={!!unknownMap["Month"]}
-                onChange={(e) => {
-                  onToggleUnknown("Month", e.target.checked);
-                  if (!e.target.checked && !month) {
-                    onMonthChange("May");
-                  }
-                }}
-                className="w-4 h-4 rounded border-border text-primary focus:ring-primary/40 cursor-pointer accent-primary"
-              />
-            </div>
+            <span className="text-[11px] font-semibold text-danger/90 bg-danger/10 px-2 py-0.5 rounded-md select-none shrink-0">
+              Required
+            </span>
           </div>
           <select
             id="select-month"
-            disabled={!!unknownMap["Month"]}
-            value={unknownMap["Month"] || !month ? "" : month}
+            value={month || ""}
             onChange={(e) => onMonthChange((e.target.value as Month) || null)}
             className={`w-full px-3 py-2 text-sm rounded-lg border outline-none transition-all ${
-              unknownMap["Month"]
-                ? "bg-subtle text-text-muted/60 border-border cursor-not-allowed italic"
+              errors.Month
+                ? "bg-card text-text border-danger ring-1 ring-danger/30 focus:border-danger focus:ring-danger/40"
                 : "bg-card text-text border-border hover:border-slate-300 dark:hover:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/20"
             }`}
           >
-            {unknownMap["Month"] && <option value="">Auto-imputed</option>}
-            {!unknownMap["Month"] &&
-              MONTHS.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
+            <option value="" disabled>
+              Select month...
+            </option>
+            {MONTHS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
           </select>
+          {errors.Month && (
+            <span className="text-xs text-danger font-medium animate-fade-in mt-1 block">
+              {errors.Month}
+            </span>
+          )}
         </div>
 
-        {/* Visitor Type */}
+        {/* Visitor Type - Required */}
         <div className="p-3 rounded-xl bg-subtle/50 border border-border hover:border-slate-300 dark:hover:border-slate-700 transition-colors flex flex-col justify-between">
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <label
               htmlFor="select-visitor-type"
-              className="text-xs sm:text-sm font-medium text-text select-none"
+              className="text-xs sm:text-sm font-medium text-text select-none flex items-center gap-1"
             >
-              Visitor type
+              <span>Visitor type</span>
+              <span className="text-danger font-bold text-sm" title="Required">
+                *
+              </span>
             </label>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <label
-                htmlFor="toggle-visitor-type"
-                className="text-xs text-text-muted select-none cursor-pointer hover:text-text transition-colors"
-              >
-                Unknown
-              </label>
-              <input
-                id="toggle-visitor-type"
-                type="checkbox"
-                checked={!!unknownMap["VisitorType"]}
-                onChange={(e) => {
-                  onToggleUnknown("VisitorType", e.target.checked);
-                  if (!e.target.checked && !visitorType) {
-                    onVisitorTypeChange("Returning_Visitor");
-                  }
-                }}
-                className="w-4 h-4 rounded border-border text-primary focus:ring-primary/40 cursor-pointer accent-primary"
-              />
-            </div>
+            <span className="text-[11px] font-semibold text-danger/90 bg-danger/10 px-2 py-0.5 rounded-md select-none shrink-0">
+              Required
+            </span>
           </div>
           <select
             id="select-visitor-type"
-            disabled={!!unknownMap["VisitorType"]}
-            value={unknownMap["VisitorType"] || !visitorType ? "" : visitorType}
+            value={visitorType || ""}
             onChange={(e) =>
               onVisitorTypeChange((e.target.value as VisitorType) || null)
             }
             className={`w-full px-3 py-2 text-sm rounded-lg border outline-none transition-all ${
-              unknownMap["VisitorType"]
-                ? "bg-subtle text-text-muted/60 border-border cursor-not-allowed italic"
+              errors.VisitorType
+                ? "bg-card text-text border-danger ring-1 ring-danger/30 focus:border-danger focus:ring-danger/40"
                 : "bg-card text-text border-border hover:border-slate-300 dark:hover:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/20"
             }`}
           >
-            {unknownMap["VisitorType"] && (
-              <option value="">Auto-imputed</option>
-            )}
-            {!unknownMap["VisitorType"] &&
-              VISITOR_TYPES.map((v) => (
-                <option key={v} value={v}>
-                  {v.replace("_", " ")}
-                </option>
-              ))}
+            <option value="" disabled>
+              Select visitor type...
+            </option>
+            {VISITOR_TYPES.map((v) => (
+              <option key={v} value={v}>
+                {v.replace("_", " ")}
+              </option>
+            ))}
           </select>
+          {errors.VisitorType && (
+            <span className="text-xs text-danger font-medium animate-fade-in mt-1 block">
+              {errors.VisitorType}
+            </span>
+          )}
         </div>
 
         {/* Weekend Session: Segmented Toggle (Weekday vs Weekend) */}

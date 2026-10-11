@@ -113,7 +113,7 @@ export const VISITOR_NUMERIC_FIELDS: FieldConfig[] = [
     key: "OperatingSystems",
     label: "Operating system (ID)",
     min: 1,
-    max: 20,
+    max: 8,
     step: 1,
     isInt: true,
     defaultValue: 1,
@@ -122,7 +122,7 @@ export const VISITOR_NUMERIC_FIELDS: FieldConfig[] = [
     key: "Browser",
     label: "Browser (ID)",
     min: 1,
-    max: 20,
+    max: 13,
     step: 1,
     isInt: true,
     defaultValue: 1,
@@ -131,7 +131,7 @@ export const VISITOR_NUMERIC_FIELDS: FieldConfig[] = [
     key: "Region",
     label: "Region (ID)",
     min: 1,
-    max: 20,
+    max: 9,
     step: 1,
     isInt: true,
     defaultValue: 1,
@@ -140,12 +140,48 @@ export const VISITOR_NUMERIC_FIELDS: FieldConfig[] = [
     key: "TrafficType",
     label: "Traffic type (ID)",
     min: 1,
-    max: 30,
+    max: 20,
     step: 1,
     isInt: true,
     defaultValue: 1,
   },
 ];
+
+export const REQUIRED_FIELDS: (keyof SessionData)[] = [
+  "PageValues",
+  "ExitRates",
+  "ProductRelated",
+  "Month",
+  "VisitorType",
+];
+
+export const VALID_MONTHS: readonly Month[] = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+export const VALID_VISITOR_TYPES: readonly VisitorType[] = [
+  "Returning_Visitor",
+  "New_Visitor",
+  "Other",
+] as const;
+
+export const VALID_OPERATING_SYSTEMS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+export const VALID_BROWSERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] as const;
+export const VALID_REGIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+export const VALID_TRAFFIC_TYPES = [
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+] as const;
 
 export const ALL_NUMERIC_FIELDS: FieldConfig[] = [
   ...BROWSING_FIELDS,

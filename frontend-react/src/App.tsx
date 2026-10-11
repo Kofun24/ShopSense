@@ -15,7 +15,7 @@ import {
   PredictResponse,
   SessionData,
 } from "./types";
-import { PRESETS, ALL_NUMERIC_FIELDS } from "./lib/constants";
+import { PRESETS, ALL_NUMERIC_FIELDS, REQUIRED_FIELDS } from "./lib/constants";
 import { checkHealth, getModelInfo, predictIntent, ApiClientError } from "./lib/api";
 
 export const App: React.FC = () => {
@@ -92,7 +92,9 @@ export const App: React.FC = () => {
   const [unknownMap, setUnknownMap] = useState<Record<string, boolean>>(() => {
     const map: Record<string, boolean> = {};
     for (const [k, v] of Object.entries(PRESETS.casual.values)) {
-      if (v === null || v === undefined) {
+      if ((REQUIRED_FIELDS as readonly string[]).includes(k)) {
+        map[k] = false;
+      } else if (v === null || v === undefined) {
         map[k] = true;
       }
     }
@@ -182,7 +184,9 @@ export const App: React.FC = () => {
       setSession({ ...preset.values });
       const newUnknownMap: Record<string, boolean> = {};
       for (const [k, v] of Object.entries(preset.values)) {
-        if (v === null || v === undefined) {
+        if ((REQUIRED_FIELDS as readonly string[]).includes(k)) {
+          newUnknownMap[k] = false;
+        } else if (v === null || v === undefined) {
           newUnknownMap[k] = true;
         }
       }
@@ -205,7 +209,12 @@ export const App: React.FC = () => {
     let count = 0;
 
     ALL_NUMERIC_FIELDS.forEach((cfg) => {
-      if (!unknownMap[cfg.key] && session[cfg.key] !== null && session[cfg.key] !== undefined) {
+      const isReq = (REQUIRED_FIELDS as readonly string[]).includes(cfg.key);
+      if (
+        (!isReq ? !unknownMap[cfg.key] : true) &&
+        session[cfg.key] !== null &&
+        session[cfg.key] !== undefined
+      ) {
         payload[cfg.key] = session[cfg.key] as any;
         count++;
       } else {
@@ -213,7 +222,7 @@ export const App: React.FC = () => {
       }
     });
 
-    if (!unknownMap["Month"] && session.Month !== null && session.Month !== undefined) {
+    if (session.Month !== null && session.Month !== undefined) {
       payload.Month = session.Month;
       count++;
     } else {
@@ -221,7 +230,6 @@ export const App: React.FC = () => {
     }
 
     if (
-      !unknownMap["VisitorType"] &&
       session.VisitorType !== null &&
       session.VisitorType !== undefined
     ) {
@@ -251,7 +259,14 @@ export const App: React.FC = () => {
 
     const { payload, providedCount } = buildPayload();
 
-    if (providedCount < 5) {
+    const areRequiredValid =
+      payload.PageValues !== null &&
+      payload.ExitRates !== null &&
+      payload.ProductRelated !== null &&
+      payload.Month !== null &&
+      payload.VisitorType !== null;
+
+    if (!areRequiredValid || providedCount < 5) {
       setLiveEstimate(null);
       return;
     }
@@ -292,6 +307,10 @@ export const App: React.FC = () => {
 
   // Unknown toggles
   const handleToggleUnknown = (key: string, unknown: boolean) => {
+    // 5 required fields can never be marked Unknown
+    if ((REQUIRED_FIELDS as readonly string[]).includes(key)) {
+      return;
+    }
     setIsModifiedFromPreset(true);
     setUnknownMap((prev) => ({ ...prev, [key]: unknown }));
     if (unknown) {
@@ -310,10 +329,22 @@ export const App: React.FC = () => {
   // Submit Prediction
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPredictLoading(true);
-    setPredictionError(null);
 
     const { payload } = buildPayload();
+
+    // Prevent submission if any required field is missing
+    if (
+      payload.PageValues === null ||
+      payload.ExitRates === null ||
+      payload.ProductRelated === null ||
+      payload.Month === null ||
+      payload.VisitorType === null
+    ) {
+      return;
+    }
+
+    setPredictLoading(true);
+    setPredictionError(null);
 
     try {
       const res = await predictIntent(payload);
