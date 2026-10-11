@@ -15,6 +15,8 @@ import {
   BROWSING_FIELDS,
   METRIC_FIELDS,
   ALL_NUMERIC_FIELDS,
+  MONTHS,
+  VISITOR_TYPES,
 } from "../lib/constants";
 import { NumericField } from "./NumericField";
 import { VisitorContextFields } from "./VisitorContextFields";
@@ -49,19 +51,105 @@ export const SessionForm: React.FC<SessionFormProps> = ({
   // Validate fields in real-time
   const errors: Record<string, string | null> = {};
 
+  // 1. Mandatory 5 fields: PageValues, ExitRates, ProductRelated, Month, VisitorType
+  // PageValues - Required, non-negative finite number (0 is valid)
+  if (unknownMap["PageValues"]) {
+    errors["PageValues"] = "PageValues is required and cannot be Unknown";
+  } else if (session.PageValues === null || session.PageValues === undefined) {
+    errors["PageValues"] = "PageValues is required";
+  } else if (
+    typeof session.PageValues !== "number" ||
+    isNaN(session.PageValues) ||
+    !isFinite(session.PageValues)
+  ) {
+    errors["PageValues"] = "Must be a valid finite number";
+  } else if (session.PageValues < 0) {
+    errors["PageValues"] = "Must be a non-negative number (≥ 0)";
+  } else if (session.PageValues > 1000) {
+    errors["PageValues"] = "Value cannot exceed 1000";
+  }
+
+  // ExitRates - Required, 0 to 1 inclusive (0 is valid)
+  if (unknownMap["ExitRates"]) {
+    errors["ExitRates"] = "ExitRates is required and cannot be Unknown";
+  } else if (session.ExitRates === null || session.ExitRates === undefined) {
+    errors["ExitRates"] = "ExitRates is required";
+  } else if (
+    typeof session.ExitRates !== "number" ||
+    isNaN(session.ExitRates) ||
+    !isFinite(session.ExitRates)
+  ) {
+    errors["ExitRates"] = "Must be a valid finite number";
+  } else if (session.ExitRates < 0 || session.ExitRates > 1) {
+    errors["ExitRates"] = "Must be between 0 and 1 (inclusive)";
+  }
+
+  // ProductRelated - Required, non-negative whole number (0 is valid)
+  if (unknownMap["ProductRelated"]) {
+    errors["ProductRelated"] = "ProductRelated is required and cannot be Unknown";
+  } else if (
+    session.ProductRelated === null ||
+    session.ProductRelated === undefined
+  ) {
+    errors["ProductRelated"] = "ProductRelated is required";
+  } else if (
+    typeof session.ProductRelated !== "number" ||
+    isNaN(session.ProductRelated) ||
+    !isFinite(session.ProductRelated)
+  ) {
+    errors["ProductRelated"] = "Must be a valid whole number";
+  } else if (!Number.isInteger(session.ProductRelated)) {
+    errors["ProductRelated"] = "Must be a whole number (no decimals)";
+  } else if (session.ProductRelated < 0) {
+    errors["ProductRelated"] = "Must be a non-negative whole number (≥ 0)";
+  } else if (session.ProductRelated > 5000) {
+    errors["ProductRelated"] = "Value cannot exceed 5000";
+  }
+
+  // Month - Required, valid category
+  if (unknownMap["Month"]) {
+    errors["Month"] = "Month is required and cannot be Unknown";
+  } else if (!session.Month) {
+    errors["Month"] = "Month is required";
+  } else if (!MONTHS.includes(session.Month)) {
+    errors["Month"] = `Unsupported month: ${session.Month}`;
+  }
+
+  // VisitorType - Required, valid category
+  if (unknownMap["VisitorType"]) {
+    errors["VisitorType"] = "Visitor type is required and cannot be Unknown";
+  } else if (!session.VisitorType) {
+    errors["VisitorType"] = "Visitor type is required";
+  } else if (!VISITOR_TYPES.includes(session.VisitorType)) {
+    errors["VisitorType"] = `Unsupported visitor type: ${session.VisitorType}`;
+  }
+
+  // 2. Validate optional numeric fields (when provided and not Unknown)
   ALL_NUMERIC_FIELDS.forEach((cfg) => {
+    // Skip if already validated as one of the 3 required numeric fields
+    if (
+      cfg.key === "PageValues" ||
+      cfg.key === "ExitRates" ||
+      cfg.key === "ProductRelated"
+    ) {
+      return;
+    }
+
     const isUnknown = !!unknownMap[cfg.key];
     const val = session[cfg.key];
 
     if (!isUnknown && val !== null && val !== undefined) {
-      if (typeof val !== "number" || isNaN(val)) {
-        errors[cfg.key] = "Please enter a valid number";
+      if (typeof val !== "number" || isNaN(val) || !isFinite(val)) {
+        errors[cfg.key] = "Must be a valid finite number";
+      } else if (cfg.isInt && !Number.isInteger(val)) {
+        errors[cfg.key] = "Must be a whole number (no decimals)";
       } else if (val < cfg.min) {
-        errors[cfg.key] = `Value must be at least ${cfg.min}`;
+        errors[cfg.key] =
+          cfg.min === 0
+            ? "Must be a non-negative number (≥ 0)"
+            : `Value must be at least ${cfg.min}`;
       } else if (val > cfg.max) {
         errors[cfg.key] = `Value cannot exceed ${cfg.max}`;
-      } else if (cfg.isInt && !Number.isInteger(val)) {
-        errors[cfg.key] = "Value must be an integer";
       }
     }
   });
@@ -70,7 +158,25 @@ export const SessionForm: React.FC<SessionFormProps> = ({
     (err) => err !== null && err !== undefined
   );
 
-  // Calculate count of provided (non-null and non-unknown) fields
+  const requiredFields: (keyof SessionData)[] = [
+    "PageValues",
+    "ExitRates",
+    "ProductRelated",
+    "Month",
+    "VisitorType",
+  ];
+
+  const requiredValidCount = requiredFields.filter(
+    (k) =>
+      !errors[k] &&
+      session[k] !== null &&
+      session[k] !== undefined &&
+      !unknownMap[k]
+  ).length;
+
+  const allRequiredValid = requiredValidCount === 5;
+
+  // Calculate count of provided (non-null, non-unknown, and valid) fields
   let providedCount = 0;
   const totalFields = 17;
 
@@ -87,26 +193,26 @@ export const SessionForm: React.FC<SessionFormProps> = ({
   });
 
   // Categoricals & Weekend (3)
-  if (!unknownMap["Month"] && session.Month !== null && session.Month !== undefined) {
+  if (!unknownMap["Month"] && session.Month && !errors["Month"]) {
     providedCount++;
   }
   if (
     !unknownMap["VisitorType"] &&
-    session.VisitorType !== null &&
-    session.VisitorType !== undefined
+    session.VisitorType &&
+    !errors["VisitorType"]
   ) {
     providedCount++;
   }
   if (
     !unknownMap["Weekend"] &&
     session.Weekend !== null &&
-    session.Weekend !== undefined
+    session.Weekend !== undefined &&
+    !errors["Weekend"]
   ) {
     providedCount++;
   }
 
-  const isMinimumMet = providedCount >= 5;
-  const canSubmit = isMinimumMet && !hasValidationErrors && !loading;
+  const canSubmit = allRequiredValid && !hasValidationErrors && !loading;
 
   return (
     <form
@@ -136,6 +242,7 @@ export const SessionForm: React.FC<SessionFormProps> = ({
               config={cfg}
               value={session[cfg.key] as number}
               isUnknown={!!unknownMap[cfg.key]}
+              isRequired={cfg.key === "ProductRelated"}
               error={errors[cfg.key]}
               onChange={(val) => onUpdateField(cfg.key, val)}
               onToggleUnknown={(u) => onToggleUnknown(cfg.key, u)}
@@ -165,6 +272,7 @@ export const SessionForm: React.FC<SessionFormProps> = ({
               config={cfg}
               value={session[cfg.key] as number}
               isUnknown={!!unknownMap[cfg.key]}
+              isRequired={cfg.key === "PageValues" || cfg.key === "ExitRates"}
               error={errors[cfg.key]}
               onChange={(val) => onUpdateField(cfg.key, val)}
               onToggleUnknown={(u) => onToggleUnknown(cfg.key, u)}
@@ -210,7 +318,7 @@ export const SessionForm: React.FC<SessionFormProps> = ({
       </section>
 
       {/* Live debounced estimate preview line */}
-      {isMinimumMet && liveEstimate && (
+      {allRequiredValid && !hasValidationErrors && liveEstimate && (
         <div className="pt-2 px-1 flex items-center justify-end text-xs text-text-muted animate-fade-in">
           <div className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg bg-subtle border border-border">
             {liveEstimate.loading ? (
@@ -235,31 +343,33 @@ export const SessionForm: React.FC<SessionFormProps> = ({
         <div className="flex items-center gap-3">
           <div
             className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold transition-colors shadow-2xs ${
-              isMinimumMet
+              allRequiredValid && !hasValidationErrors
                 ? "bg-[#E6F4EA] text-[#137333] dark:bg-emerald-950/60 dark:text-[#34D399] border border-[#137333]/30 dark:border-emerald-700/50"
                 : "bg-blue-50 text-[#2A66F7] dark:bg-blue-950/60 dark:text-[#60A5FA] border border-blue-200 dark:border-blue-800/50"
             }`}
           >
-            {isMinimumMet ? (
+            {allRequiredValid && !hasValidationErrors ? (
               <CheckCircle2 className="w-5 h-5 text-[#137333] dark:text-[#34D399]" />
             ) : (
-              `${providedCount}/5`
+              `${requiredValidCount}/5`
             )}
           </div>
           <div className="text-xs">
             <div
               className={`font-semibold ${
-                isMinimumMet ? "text-text" : "text-[#2A66F7] dark:text-[#60A5FA]"
+                allRequiredValid && !hasValidationErrors
+                  ? "text-text"
+                  : "text-[#2A66F7] dark:text-[#60A5FA]"
               }`}
             >
-              {isMinimumMet
+              {allRequiredValid && !hasValidationErrors
                 ? `${providedCount} of ${totalFields} fields configured`
-                : `${providedCount} of 5 required fields provided`}
+                : `${requiredValidCount} of 5 required fields configured`}
             </div>
             <div className="text-text-muted">
-              {isMinimumMet
+              {allRequiredValid && !hasValidationErrors
                 ? "Ready for high-accuracy inference"
-                : "Provide at least 5 fields to enable scoring"}
+                : "All 5 required fields must be valid before predicting"}
             </div>
           </div>
         </div>

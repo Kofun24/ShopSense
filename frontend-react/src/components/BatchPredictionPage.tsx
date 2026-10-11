@@ -31,36 +31,400 @@ export const BatchPredictionPage: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const EXPECTED_FEATURE_COLUMNS = [
+    "Administrative",
+    "Administrative_Duration",
+    "Informational",
+    "Informational_Duration",
+    "ProductRelated",
+    "ProductRelated_Duration",
+    "BounceRates",
+    "ExitRates",
+    "PageValues",
+    "SpecialDay",
+    "Month",
+    "OperatingSystems",
+    "Browser",
+    "Region",
+    "TrafficType",
+    "VisitorType",
+    "Weekend",
+  ];
+
+  const VALID_MONTH_NAMES = new Set([
+    "jan", "feb", "mar", "apr", "may", "jun",
+    "jul", "aug", "sep", "oct", "nov", "dec", "june"
+  ]);
+
+  const VALID_VISITOR_TYPE_NAMES = new Set([
+    "returning_visitor", "new_visitor", "other",
+    "returning visitor", "new visitor"
+  ]);
+
+  const VALID_BOOLEAN_STRINGS = new Set([
+    "true", "false", "1", "0", "yes", "no"
+  ]);
+
+  const parseCSVContent = (text: string): { headers: string[]; rows: string[][] } => {
+    const lines: string[][] = [];
+    let currentRow: string[] = [];
+    let currentField = "";
+    let inQuotes = false;
+    const len = text.length;
+
+    for (let i = 0; i < len; i++) {
+      const char = text[i];
+      const nextChar = i + 1 < len ? text[i + 1] : "";
+
+      if (inQuotes) {
+        if (char === '"') {
+          if (nextChar === '"') {
+            currentField += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          currentField += char;
+        }
+      } else {
+        if (char === '"') {
+          inQuotes = true;
+        } else if (char === ',') {
+          currentRow.push(currentField.trim());
+          currentField = "";
+        } else if (char === '\r') {
+          if (nextChar === '\n') {
+            i++;
+          }
+          currentRow.push(currentField.trim());
+          currentField = "";
+          if (currentRow.some((field) => field !== "")) {
+            lines.push(currentRow);
+          }
+          currentRow = [];
+        } else if (char === '\n') {
+          currentRow.push(currentField.trim());
+          currentField = "";
+          if (currentRow.some((field) => field !== "")) {
+            lines.push(currentRow);
+          }
+          currentRow = [];
+        } else {
+          currentField += char;
+        }
+      }
+    }
+
+    if (currentField !== "" || currentRow.length > 0) {
+      currentRow.push(currentField.trim());
+      if (currentRow.some((field) => field !== "")) {
+        lines.push(currentRow);
+      }
+    }
+
+    if (lines.length === 0) {
+      return { headers: [], rows: [] };
+    }
+
+    const headers = lines[0].map((h) => h.replace(/^["']|["']$/g, "").trim());
+    const rows = lines.slice(1);
+    return { headers, rows };
+  };
+
+  const validateCSVFile = async (
+    targetFile: File
+  ): Promise<{ valid: boolean; error?: string; rowCount?: number }> => {
+    if (!targetFile.name.toLowerCase().endsWith(".csv")) {
+      return {
+        valid: false,
+        error: "Unsupported file type. Please upload a valid .csv file.",
+      };
+    }
+
+    if (targetFile.size === 0) {
+      return {
+        valid: false,
+        error: "The uploaded CSV file is empty. Please upload a file with headers and data rows.",
+      };
+    }
+
+    let text: string;
+    try {
+      text = await targetFile.text();
+    } catch (e) {
+      return {
+        valid: false,
+        error: `Could not read file: ${e instanceof Error ? e.message : String(e)}`,
+      };
+    }
+
+    if (!text.trim()) {
+      return {
+        valid: false,
+        error: "The uploaded CSV file contains no content. Please upload a valid CSV file.",
+      };
+    }
+
+    const { headers, rows } = parseCSVContent(text);
+
+    if (headers.length === 0) {
+      return {
+        valid: false,
+        error: "No header row detected in the CSV file.",
+      };
+    }
+
+    // Reject duplicate column headers
+    const seenHeaders = new Set<string>();
+    const duplicateHeaders: string[] = [];
+    for (const h of headers) {
+      const normalized = h.toLowerCase();
+      if (seenHeaders.has(normalized)) {
+        duplicateHeaders.push(h);
+      }
+      seenHeaders.add(normalized);
+    }
+    if (duplicateHeaders.length > 0) {
+      return {
+        valid: false,
+        error: `Duplicate column header(s) detected: ${Array.from(new Set(duplicateHeaders)).join(", ")}. Column headers must be unique.`,
+      };
+    }
+
+    // Reject files with missing required column headers
+    const headerMap: Record<string, number> = {};
+    headers.forEach((h, idx) => {
+      headerMap[h] = idx;
+    });
+
+    const missingColumns = EXPECTED_FEATURE_COLUMNS.filter(
+      (col) => headerMap[col] === undefined
+    );
+    if (missingColumns.length > 0) {
+      return {
+        valid: false,
+        error: `Missing required column header(s): ${missingColumns.join(", ")}. The CSV must contain all 17 feature columns.`,
+      };
+    }
+
+    // Data rows count validation
+    if (rows.length === 0) {
+      return {
+        valid: false,
+        error: "CSV file contains headers but no data rows. Please upload a file with at least 1 data row.",
+      };
+    }
+
+    if (rows.length > 5000) {
+      return {
+        valid: false,
+        error: `CSV file contains ${rows.length.toLocaleString()} data rows. The maximum allowed is 5,000 data rows per batch.`,
+      };
+    }
+
+    // Validate values in data rows
+    const cellErrors: string[] = [];
+    const maxErrorsToCollect = 5;
+
+    for (let rIdx = 0; rIdx < rows.length; rIdx++) {
+      const row = rows[rIdx];
+      const rowNum = rIdx + 1; // 1-indexed data row number
+
+      for (const col of EXPECTED_FEATURE_COLUMNS) {
+        const colIdx = headerMap[col];
+        const rawVal = row[colIdx]?.trim();
+
+        // Missing/blank cell is preserved for automatic imputation
+        if (
+          rawVal === undefined ||
+          rawVal === "" ||
+          rawVal.toLowerCase() === "nan" ||
+          rawVal.toLowerCase() === "null" ||
+          rawVal.toLowerCase() === "na"
+        ) {
+          continue;
+        }
+
+        // Validate non-blank values
+        if (
+          col === "Administrative" ||
+          col === "Informational" ||
+          col === "ProductRelated"
+        ) {
+          const num = Number(rawVal);
+          const maxVal = col === "ProductRelated" ? 5000 : 100;
+          if (isNaN(num) || !Number.isInteger(num) || num < 0) {
+            cellErrors.push(
+              `Row ${rowNum}, column '${col}': Must be a non-negative whole number (got '${rawVal}')`
+            );
+          } else if (num > maxVal) {
+            cellErrors.push(
+              `Row ${rowNum}, column '${col}': Value cannot exceed ${maxVal} (got '${rawVal}')`
+            );
+          }
+        } else if (
+          col === "Administrative_Duration" ||
+          col === "Informational_Duration" ||
+          col === "ProductRelated_Duration"
+        ) {
+          const num = Number(rawVal);
+          const maxVal = col === "ProductRelated_Duration" ? 500000 : 100000;
+          if (isNaN(num) || !isFinite(num) || num < 0) {
+            cellErrors.push(
+              `Row ${rowNum}, column '${col}': Must be a non-negative duration (got '${rawVal}')`
+            );
+          } else if (num > maxVal) {
+            cellErrors.push(
+              `Row ${rowNum}, column '${col}': Value cannot exceed ${maxVal} (got '${rawVal}')`
+            );
+          }
+        } else if (col === "BounceRates" || col === "ExitRates") {
+          const num = Number(rawVal);
+          if (isNaN(num) || !isFinite(num) || num < 0 || num > 1) {
+            cellErrors.push(
+              `Row ${rowNum}, column '${col}': Must be a rate between 0 and 1 inclusive (got '${rawVal}')`
+            );
+          }
+        } else if (col === "PageValues") {
+          const num = Number(rawVal);
+          if (isNaN(num) || !isFinite(num) || num < 0) {
+            cellErrors.push(
+              `Row ${rowNum}, column 'PageValues': Must be a non-negative number (got '${rawVal}')`
+            );
+          } else if (num > 1000) {
+            cellErrors.push(
+              `Row ${rowNum}, column 'PageValues': Value cannot exceed 1000 (got '${rawVal}')`
+            );
+          }
+        } else if (col === "SpecialDay") {
+          const num = Number(rawVal);
+          if (isNaN(num) || !isFinite(num) || num < 0 || num > 1) {
+            cellErrors.push(
+              `Row ${rowNum}, column 'SpecialDay': Must be between 0 and 1 inclusive (got '${rawVal}')`
+            );
+          }
+        } else if (col === "Month") {
+          if (!VALID_MONTH_NAMES.has(rawVal.toLowerCase())) {
+            cellErrors.push(
+              `Row ${rowNum}, column 'Month': Unsupported month '${rawVal}'. Must be one of Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec`
+            );
+          }
+        } else if (col === "VisitorType") {
+          if (!VALID_VISITOR_TYPE_NAMES.has(rawVal.toLowerCase())) {
+            cellErrors.push(
+              `Row ${rowNum}, column 'VisitorType': Unsupported visitor type '${rawVal}'. Must be Returning_Visitor, New_Visitor, or Other`
+            );
+          }
+        } else if (col === "OperatingSystems") {
+          const num = Number(rawVal);
+          if (isNaN(num) || !Number.isInteger(num) || num < 1 || num > 8) {
+            cellErrors.push(
+              `Row ${rowNum}, column 'OperatingSystems': Unsupported operating system ID '${rawVal}'. Must be an integer between 1 and 8`
+            );
+          }
+        } else if (col === "Browser") {
+          const num = Number(rawVal);
+          if (isNaN(num) || !Number.isInteger(num) || num < 1 || num > 13) {
+            cellErrors.push(
+              `Row ${rowNum}, column 'Browser': Unsupported browser ID '${rawVal}'. Must be an integer between 1 and 13`
+            );
+          }
+        } else if (col === "Region") {
+          const num = Number(rawVal);
+          if (isNaN(num) || !Number.isInteger(num) || num < 1 || num > 9) {
+            cellErrors.push(
+              `Row ${rowNum}, column 'Region': Unsupported region ID '${rawVal}'. Must be an integer between 1 and 9`
+            );
+          }
+        } else if (col === "TrafficType") {
+          const num = Number(rawVal);
+          if (isNaN(num) || !Number.isInteger(num) || num < 1 || num > 20) {
+            cellErrors.push(
+              `Row ${rowNum}, column 'TrafficType': Unsupported traffic type ID '${rawVal}'. Must be an integer between 1 and 20`
+            );
+          }
+        } else if (col === "Weekend") {
+          if (!VALID_BOOLEAN_STRINGS.has(rawVal.toLowerCase())) {
+            cellErrors.push(
+              `Row ${rowNum}, column 'Weekend': Invalid boolean value '${rawVal}'. Must be TRUE or FALSE`
+            );
+          }
+        }
+
+        if (cellErrors.length >= 20) {
+          break;
+        }
+      }
+
+      if (cellErrors.length >= 20) {
+        break;
+      }
+    }
+
+    if (cellErrors.length > 0) {
+      const displayedErrors = cellErrors.slice(0, maxErrorsToCollect);
+      const remainingCount = cellErrors.length - displayedErrors.length;
+      const errorDetails = displayedErrors.map((e) => `• ${e}`).join("\n");
+      const summaryMsg =
+        remainingCount > 0
+          ? `\n• ...and ${remainingCount} more error(s) found in data rows.`
+          : "";
+      return {
+        valid: false,
+        error: `CSV validation failed with the following errors:\n${errorDetails}${summaryMsg}\n\nPlease correct these values before running batch prediction.`,
+      };
+    }
+
+    return { valid: true, rowCount: rows.length };
+  };
+
+  const handleProcessFileSelection = async (selected: File) => {
+    setError(null);
+    setResponse(null);
+
+    const validation = await validateCSVFile(selected);
+    if (!validation.valid) {
+      setError(validation.error || "Invalid CSV file.");
+      setFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    setFile(selected);
+    setError(null);
+  };
+
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const dropped = e.dataTransfer.files[0];
-      if (dropped.name.toLowerCase().endsWith(".csv")) {
-        setFile(dropped);
-        setError(null);
-      } else {
-        setError("Only CSV files are supported. Please upload a .csv file.");
-      }
+      handleProcessFileSelection(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const selected = e.target.files[0];
-      if (selected.name.toLowerCase().endsWith(".csv")) {
-        setFile(selected);
-        setError(null);
-      } else {
-        setError("Only CSV files are supported. Please upload a .csv file.");
-      }
+      handleProcessFileSelection(e.target.files[0]);
     }
   };
 
   const handleUploadAndPredict = async () => {
     if (!file) return;
+
     setLoading(true);
     setError(null);
+
+    // Validate before upload
+    const validation = await validateCSVFile(file);
+    if (!validation.valid) {
+      setError(validation.error || "Invalid CSV file.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await predictBatch(file);
       setResponse(res);
@@ -290,7 +654,7 @@ export const BatchPredictionPage: React.FC = () => {
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <h4 className="text-sm font-bold">Batch Processing Failed</h4>
-            <p className="text-xs sm:text-sm text-text leading-relaxed">{error}</p>
+            <p className="text-xs sm:text-sm text-text leading-relaxed whitespace-pre-line">{error}</p>
           </div>
         </div>
       )}
